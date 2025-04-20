@@ -1,0 +1,129 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TC70 Barcode + Upload to Drive</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="JsBarcode.all.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 10px;
+      background-color: #f7f7f7;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h2 {
+      font-size: 1.5em;
+      margin: 10px 0;
+      text-align: center;
+    }
+    label {
+      width: 100%;
+      font-size: 1.1em;
+      margin-top: 10px;
+    }
+    input, select, button {
+      font-size: 1.2em;
+      padding: 10px;
+      width: 100%;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    svg {
+      margin-top: 20px;
+      width: 100%;
+      height: 80px;
+    }
+    button {
+      background-color: #0066cc;
+      color: white;
+    }
+    #status {
+      margin-top: 10px;
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <h2>🏷️ TC70 Barcode Generator & Photo Uploader</h2>
+
+  <label>Raw Material Number:</label>
+  <input type="text" id="item" placeholder="e.g. RM7000">
+
+  <label>Lot Number:</label>
+  <input type="text" id="lot" placeholder="e.g. LOT12345">
+
+  <label>Quantity:</label>
+  <input type="text" id="qty" placeholder="e.g. 48">
+
+  <button onclick="generateBarcode()">Generate Barcode</button>
+  <svg id="barcode"></svg>
+
+  <hr style="width: 100%; margin: 20px 0;">
+
+  <h2>📸 Upload PO/Shipping Photos</h2>
+  <label>Sage Order Number:</label>
+  <input type="text" id="orderNum" placeholder="e.g. SO123456">
+
+  <label>Select or Take Photo:</label>
+  <input type="file" id="photoInput" accept="image/*" capture="environment">
+
+  <button onclick="uploadPhoto()">Upload Photo to Drive</button>
+  <p id="status"></p>
+
+  <script>
+    function generateBarcode() {
+      const item = document.getElementById('item').value.trim();
+      const lot = document.getElementById('lot').value.trim();
+      const qty = document.getElementById('qty').value.trim();
+
+      if (!item || !lot || !qty) {
+        alert("Please fill out all fields.");
+        return;
+      }
+
+      const data = `${item}\r${lot}\r${qty}\r`;
+      JsBarcode("#barcode", data, {
+        format: "CODE128",
+        displayValue: true,
+        fontSize: 18,
+        width: 2,
+        height: 80
+      });
+    }
+
+    function uploadPhoto() {
+      const orderNum = document.getElementById("orderNum").value.trim();
+      const photoFile = document.getElementById("photoInput").files[0];
+
+      if (!orderNum || !photoFile) {
+        alert("Please enter Order Number and select a photo.");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function() {
+        const base64Data = reader.result.split(',')[1];
+
+        fetch("https://script.google.com/macros/s/AKfycby_ybDgXkAGWfODfagmBKDPOOW4CLxv9l9nanU5dzTHaRLgy7N9Kx-66YAUK3IajvOB/exec", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `order=${encodeURIComponent(orderNum)}&file=${encodeURIComponent(base64Data)}`
+        })
+        .then(res => res.text())
+        .then(text => {
+          document.getElementById("status").textContent = text === "Success" ? "✅ Uploaded successfully!" : "❌ " + text;
+        })
+        .catch(err => {
+          document.getElementById("status").textContent = "❌ Error: " + err;
+        });
+      };
+      reader.readAsDataURL(photoFile);
+    }
+  </script>
+</body>
+</html>
